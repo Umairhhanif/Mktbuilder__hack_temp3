@@ -8,12 +8,12 @@ const ProductList = () => {
       {nikeProducts.map((product) => (
         <Card
           key={product.id}
-          _id={product.id}
+          id={product.id.toString()}
           tags={product.tags}
           title={product.title}
           description={product.description}
           color={product.color}
-          price={product.price}
+          price={Number(product.price)}
           imagesUrls={product.imagesUrls}
         />
       ))}

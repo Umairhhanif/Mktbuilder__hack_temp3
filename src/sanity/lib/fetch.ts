@@ -11,6 +11,12 @@ const client = createClient({
 
 }) 
 
-export  async function  sanityFetch({query, params= {}}:{query: string, params?: any}) {
-    return await client.fetch(query, params)
-}
+export async function sanityFetch<T>({ 
+    query, 
+    params = {} 
+  }: { 
+    query: string; 
+    params?: Record<string, string | number | boolean | null | undefined> 
+  }): Promise<T> {
+      return await client.fetch<T>(query, params);
+  }
