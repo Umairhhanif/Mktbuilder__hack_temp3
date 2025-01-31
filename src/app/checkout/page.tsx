@@ -1,11 +1,13 @@
-"use client";
+'use client';
+
 import React, { useEffect, useState } from 'react';
 import { FiTruck } from 'react-icons/fi';
 import Image from 'next/image';
-import { Product } from '../../../types/products';
-import { getCartItems } from '../actions/actions';
+import { Product, CartItem } from '../../../types/products';
+import { getCartItems, updateCartQuantity, removeFromCart } from '../actions/actions';
 import { urlFor } from '../../sanity/lib/image';
 import { IoIosArrowDown } from 'react-icons/io';
+import { useCart } from '../context/CartContext';
 
 const countries = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria",
@@ -18,38 +20,227 @@ const countries = [
   "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia",
   "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati",
   "Korea, North", "Korea, South", "Kosovo", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia",
-  "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta",
-  "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro",
-  "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger",
-  "Nigeria", "North Macedonia", "Norway", "Oman", "Pakistan", "Palau", "Palestine", "Panama", "Papua New Guinea",
-  "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis",
-  "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia",
-  "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
-  "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Taiwan",
-  "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey",
-  "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay",
-  "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
+  "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta"
 ];
 
 const Checkoutpage = () => {
-  const [cartItems, setCartItems] = useState<Product[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedCountry, setSelectedCountry] = useState("India");
   const [showCountryList, setShowCountryList] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { updateCart } = useCart();
 
   useEffect(() => {
-    setCartItems(getCartItems());
+    const items = getCartItems();
+    setCartItems(items);
   }, []);
 
-  const calculateSubtotal = () => {
-    return cartItems.reduce((total, item) => total + item.price * item.inventory, 0);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormValues(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const calculateDiscount = () => {
-    return calculateSubtotal() * 0.03;
+  const calculateSubtotal = (): number => {
+    if (!cartItems || !cartItems.length) return 0;
+    
+    return cartItems.reduce((total, item) => {
+      const itemPrice = typeof item.price === 'number' ? item.price : 0;
+      const itemQuantity = typeof item.quantity === 'number' ? item.quantity : 1;
+      return total + (itemPrice * itemQuantity);
+    }, 0);
   };
 
-  const calculateTotal = () => {
-    return calculateSubtotal() - calculateDiscount();
+  const calculateDiscount = (): number => {
+    const subtotal = calculateSubtotal();
+    return Math.round((subtotal * 0.03) * 100) / 100;
+  };
+
+  const calculateTotal = (): number => {
+    const subtotal = calculateSubtotal();
+    const discount = calculateDiscount();
+    return Math.max(0, subtotal - discount);
+  };
+
+  const formatPrice = (price: number): string => {
+    if (typeof price !== 'number' || isNaN(price)) {
+      return '$0.00';
+    }
+    return `$${Math.max(0, price).toFixed(2)}`;
+  };
+
+  const handleQuantityChange = async (productId: string, change: number) => {
+    const item = cartItems.find(item => item._id === productId);
+    if (!item) return;
+
+    const newQuantity = Math.max(1, item.quantity + change);
+    updateCartQuantity(productId, newQuantity);
+    
+    // Refresh cart items and update global cart state
+    const updatedItems = getCartItems();
+    setCartItems(updatedItems);
+    updateCart();
+  };
+
+  const handleRemoveItem = (productId: string) => {
+    removeFromCart(productId);
+    const updatedItems = getCartItems();
+    setCartItems(updatedItems);
+    updateCart();
+  };
+
+  const [formValues, setFormValues] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    address: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    locality: ''
+  });
+
+  const getImageUrl = (item: CartItem) => {
+    if (item.imageUrl) return item.imageUrl;
+    if (item.image?.asset?._ref) {
+      try {
+        return urlFor(item.image).url();
+      } catch (error) {
+        console.error('Error generating Sanity image URL:', error);
+      }
+    }
+    return '/placeholder.jpg';
+  };
+
+  const handlePlaceOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formValues.firstName || !formValues.lastName || !formValues.email || !formValues.phone || 
+        !formValues.address || !formValues.city || !formValues.postalCode || !selectedCountry) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const orderData = {
+        _type: "order",
+        firstName: formValues.firstName,
+        lastName: formValues.lastName,
+        email: formValues.email,
+        phone: formValues.phone,
+        address: formValues.address,
+        addressLine2: formValues.addressLine2 || '',
+        city: formValues.city,
+        state: formValues.state || '',
+        postalCode: formValues.postalCode,
+        country: selectedCountry,
+        cartItems: cartItems.map((item) => ({
+          _type: "object",
+          product: {
+            _type: "reference",
+            _ref: item._id
+          },
+          quantity: item.quantity,
+          price: item.price
+        })),
+        subtotal: calculateSubtotal(),
+        total: calculateTotal(),
+        orderDate: new Date().toISOString(),
+        status: 'pending'
+      };
+
+      const response = await fetch('/api/order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to place order');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        alert('Order placed successfully!');
+        localStorage.removeItem('cart');
+        window.location.href = '/';
+      } else {
+        throw new Error(result.error || 'Failed to place order');
+      }
+    } catch (error: any) {
+      console.error("Error placing order:", error);
+      alert(`Failed to place order: ${error.message || 'Please try again later'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const OrderSummary = () => {
+    const subtotal = calculateSubtotal();
+    const discount = calculateDiscount();
+    const total = calculateTotal();
+
+    return (
+      <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+        <h2 className="text-2xl font-semibold mb-6 pb-4 border-b">Order Summary</h2>
+        
+        {/* Product List */}
+        <div className="space-y-6 mb-8">
+          {cartItems.map((item) => (
+            <div key={item._id} className="flex space-x-4 pb-4 border-b border-gray-100">
+              <div className="w-20 h-20 relative flex-shrink-0 bg-gray-50 border border-gray-100">
+                <Image
+                  src={getImageUrl(item)}
+                  alt={item.productName}
+                  fill
+                  sizes="80px"
+                  className="object-cover"
+                  priority
+                />
+              </div>
+              <div className="flex-grow">
+                <h3 className="font-medium text-base mb-1">{item.productName}</h3>
+                <p className="text-gray-600 text-sm mb-1">
+                  Quantity: {item.quantity}
+                </p>
+                <p className="font-medium">
+                  ${(item.price).toFixed(2)}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Price Calculations */}
+        <div className="space-y-3 border-t border-gray-200 pt-4">
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600">Subtotal</span>
+            <span className="font-medium">${subtotal.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between items-center text-green-600">
+            <span>Discount (3%)</span>
+            <span>-${discount.toFixed(2)}</span>
+          </div>
+        </div>
+
+        {/* Total */}
+        <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-200">
+          <span className="font-medium text-lg">Total</span>
+          <span className="font-bold text-lg">${total.toFixed(2)}</span>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -73,14 +264,40 @@ const Checkoutpage = () => {
         {/** Input Fields */}
         <div className="space-y-4">
           <input
+            name="firstName"
+            value={formValues.firstName}
+            onChange={handleInputChange}
             className="w-full border-[#E5E5E5] rounded-md px-4 py-3 border-[2px] placeholder:text-text-secondary-gray"
             type="text"
             placeholder="First Name"
+            required
           />
           <input
+            name="lastName"
+            value={formValues.lastName}
+            onChange={handleInputChange}
             className="w-full border-[#E5E5E5] rounded-md px-4 py-3 border-[2px] placeholder:text-text-secondary-gray"
             type="text"
             placeholder="Last Name"
+            required
+          />
+          <input
+            name="email"
+            value={formValues.email}
+            onChange={handleInputChange}
+            className="w-full border-[#E5E5E5] rounded-md px-4 py-3 border-[2px] placeholder:text-text-secondary-gray"
+            type="email"
+            placeholder="Email"
+            required
+          />
+           <input
+            name="phone"
+            value={formValues.phone}
+            onChange={handleInputChange}
+            className="w-full border-[#E5E5E5] rounded-md px-4 py-3 border-[2px] placeholder:text-text-secondary-gray"
+            type="tel"
+            placeholder="Phone No #"
+            required
           />
           <div className="relative">
             <button
@@ -92,6 +309,7 @@ const Checkoutpage = () => {
               </span>
               <IoIosArrowDown className={`transition-transform ${showCountryList ? 'rotate-180' : ''}`} />
             </button>
+
             {showCountryList && (
               <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
                 {countries.map((country) => (
@@ -110,12 +328,19 @@ const Checkoutpage = () => {
             )}
           </div>
           <input
+            name="address"
+            value={formValues.address}
+            onChange={handleInputChange}
             className="w-full border-[#E5E5E5] rounded-md px-4 py-3 border-[2px] placeholder:text-text-secondary-gray"
             type="text"
             placeholder="Address Line 1"
+            required
           />
           <span className="text-xs text-text-primary-gray">We do not ship to P.O. boxes</span>
           <input
+            name="addressLine2"
+            value={formValues.addressLine2}
+            onChange={handleInputChange}
             className="w-full border-[#E5E5E5] rounded-md px-4 py-3 border-[2px] placeholder:text-text-secondary-gray"
             type="text"
             placeholder="Address Line 2"
@@ -125,11 +350,18 @@ const Checkoutpage = () => {
         {/** Postal Code & Locality */}
         <div className="flex flex-col sm:flex-row gap-4 mt-4">
           <input
+            name="postalCode"
+            value={formValues.postalCode}
+            onChange={handleInputChange}
             className="flex-1 border-[#E5E5E5] rounded-md px-4 py-3 border-[2px] placeholder:text-text-secondary-gray"
             type="text"
             placeholder="Postal Code"
+            required
           />
           <input
+            name="locality"
+            value={formValues.locality}
+            onChange={handleInputChange}
             className="flex-1 border-[#E5E5E5] rounded-md px-4 py-3 border-[2px] placeholder:text-text-secondary-gray"
             type="text"
             placeholder="Locality"
@@ -139,65 +371,38 @@ const Checkoutpage = () => {
         {/** City & State */}
         <div className="flex flex-col sm:flex-row gap-4 mt-4">
           <input
+            name="city"
+            value={formValues.city}
+            onChange={handleInputChange}
             className="flex-1 border-[#E5E5E5] rounded-md px-4 py-3 border-[2px] placeholder:text-text-secondary-gray"
             type="text"
             placeholder="City"
+            required
           />
           <input
+            name="state"
+            value={formValues.state}
+            onChange={handleInputChange}
             className="flex-1 border-[#E5E5E5] rounded-md px-4 py-3 border-[2px] placeholder:text-text-secondary-gray"
             type="text"
             placeholder="State"
           />
         </div>
 
-        <button className="w-full text-white rounded-full py-4 mt-8 hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] animate-gradient">
-          Continue
-        </button>
+        <form onSubmit={handlePlaceOrder}>
+          <button 
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full text-white rounded-xl py-4 mt-8 font-medium text-lg animate-gradient transform hover:scale-[1.02] hover:shadow-2xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 shadow-lg active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? 'Processing...' : 'Continue'}
+          </button>
+        </form>
       </div>
 
       {/* Right Section - Order Summary */}
       <div className="col-span-12 lg:col-span-4">
-        <div className="bg-white p-6 rounded-lg shadow-sm border sticky top-4">
-          <h2 className="text-xl font-bold mb-6">Order Summary</h2>
-          
-          {/* Product List */}
-          <div className="space-y-4 mb-6">
-            {cartItems.map((item) => (
-              <div key={item._id} className="flex items-start space-x-4">
-                <div className="w-20 h-20 relative flex-shrink-0">
-                  <Image
-                    src={item.image ? urlFor(item.image).url() : '/placeholder-image.jpg'}
-                    alt={item.productName}
-                    fill
-                    className="rounded-lg object-cover"
-                    priority
-                  />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-medium">{item.productName}</h3>
-                  <p className="text-gray-600 text-sm">Quantity: {item.inventory}</p>
-                  <p className="text-black font-medium">${(item.price * item.inventory).toFixed(2)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Order Calculations */}
-          <div className="space-y-2 border-t pt-4">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Subtotal</span>
-              <span>${calculateSubtotal().toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-green-600">
-              <span>Discount (3%)</span>
-              <span>-${calculateDiscount().toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
-              <span>Total</span>
-              <span>${calculateTotal().toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
+        <OrderSummary />
       </div>
     </div>
   );

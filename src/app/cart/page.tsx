@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Product } from "../../../types/products";
+import { Product, CartItem } from "../../../types/products";
 import { getCartItems, removeFromCart, updateCartQuantity } from "../actions/actions";
 import Swal from "sweetalert2";
 import Image from "next/image";
@@ -20,7 +20,7 @@ const getImageUrl = (item: Product) => {
 };
 
 const CartPage = () => {
-  const [cartItems, setCartItems] = useState<Product[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -46,22 +46,31 @@ const CartPage = () => {
   };
 
   const handleQuantityChange = (id: string, quantity: number) => {
+    if (quantity < 1) return;
     updateCartQuantity(id, quantity);
     setCartItems(getCartItems());
   };
 
   const handleIncrement = (id: string) => {
-    const product = cartItems.find((item) => item._id === id);
-    if (product) handleQuantityChange(id, product.inventory + 1);
+    const item = cartItems.find((item) => item._id === id);
+    if (item) {
+      handleQuantityChange(id, (item.quantity || 1) + 1);
+    }
   };
 
   const handleDecrement = (id: string) => {
-    const product = cartItems.find((item) => item._id === id);
-    if (product && product.inventory > 1) handleQuantityChange(id, product.inventory - 1);
+    const item = cartItems.find((item) => item._id === id);
+    if (item && item.quantity > 1) {
+      handleQuantityChange(id, item.quantity - 1);
+    }
   };
 
   const calculatedTotal = () => {
-    return cartItems.reduce((total, item) => total + item.price * item.inventory, 0);
+    return cartItems.reduce((total, item) => {
+      const price = typeof item.price === 'number' ? item.price : 0;
+      const quantity = typeof item.quantity === 'number' ? item.quantity : 1;
+      return total + (price * quantity);
+    }, 0);
   };
 
   const handledProceed = () => {
@@ -173,7 +182,7 @@ const CartPage = () => {
                           >
                             -
                           </button>
-                          <span className="px-6 py-2 font-medium text-lg bg-white">{item.inventory}</span>
+                          <span className="px-6 py-2 font-medium text-lg bg-white">{item.quantity}</span>
                           <button
                             onClick={() => handleIncrement(item._id)}
                             className="px-4 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
@@ -224,18 +233,13 @@ const CartPage = () => {
                     <span className="text-gray-600">Shipping</span>
                     <span className="font-medium text-gray-900">Free</span>
                   </div>
-                  <div className="flex justify-between text-lg">
-                    <span className="text-gray-600">Tax</span>
-                    <span className="font-medium text-gray-900">${(calculatedTotal() * 0.97 * 0.1).toFixed(2)}</span>
-                  </div>
                   <div className="h-px bg-gray-200 my-4"></div>
                   <div className="flex justify-between items-center">
                     <span className="text-xl font-bold text-gray-900">Total</span>
                     <div className="text-right">
                       <span className="block text-2xl font-bold text-gray-900">
-                        ${(calculatedTotal() * 0.97 * 1.1).toFixed(2)}
+                        ${(calculatedTotal() * 0.97).toFixed(2)}
                       </span>
-                      <span className="text-sm text-gray-500">Including VAT</span>
                     </div>
                   </div>
                   <button
