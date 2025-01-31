@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     let orderData;
     try {
       orderData = await request.json();
-    } catch (e) {
+    } catch {
       return NextResponse.json(
         { success: false, error: 'Invalid JSON in request body' },
         { status: 400 }
@@ -61,14 +61,15 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true, orderId: result._id });
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to place order';
     console.error('Error creating order:', error);
     return NextResponse.json(
       { 
         success: false, 
-        error: error.message || 'Failed to place order'
+        error: errorMessage
       },
-      { status: error.statusCode || 500 }
+      { status: 500 }
     );
   }
 }

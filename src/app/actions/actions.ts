@@ -1,6 +1,6 @@
 import { Product, CartItem } from "../../../types/products";
 
-const parsePrice = (value: any): number => {
+const parsePrice = (value: number | string): number => {
     if (typeof value === 'number') return Math.max(0, Math.round(value * 100) / 100);
     if (typeof value === 'string') {
         // Remove currency symbol and any commas
@@ -10,7 +10,7 @@ const parsePrice = (value: any): number => {
     return 0;
 };
 
-const parseQuantity = (value: any): number => {
+const parseQuantity = (value: number | string): number => {
     if (typeof value === 'number') return Math.max(1, Math.floor(value));
     if (typeof value === 'string') return Math.max(1, Math.floor(parseFloat(value)));
     return 1;

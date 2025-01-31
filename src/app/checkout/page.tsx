@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { FiTruck } from 'react-icons/fi';
 import Image from 'next/image';
-import { Product, CartItem } from '../../../types/products';
+import { CartItem } from '../../../types/products';
 import { getCartItems, updateCartQuantity, removeFromCart } from '../actions/actions';
 import { urlFor } from '../../sanity/lib/image';
 import { IoIosArrowDown } from 'react-icons/io';
@@ -178,9 +178,10 @@ const Checkoutpage = () => {
       } else {
         throw new Error(result.error || 'Failed to place order');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error placing order:", error);
-      alert(`Failed to place order: ${error.message || 'Please try again later'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Please try again later';
+      alert(`Failed to place order: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -213,10 +214,28 @@ const Checkoutpage = () => {
                 <h3 className="font-medium text-base mb-1">{item.productName}</h3>
                 <p className="text-gray-600 text-sm mb-1">
                   Quantity: {item.quantity}
+                  <button 
+                    onClick={() => handleQuantityChange(item._id, 1)} 
+                    className="ml-2 px-2 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
+                  >
+                    +
+                  </button>
+                  <button 
+                    onClick={() => handleQuantityChange(item._id, -1)}
+                    className="ml-1 px-2 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
+                  >
+                    -
+                  </button>
                 </p>
                 <p className="font-medium">
-                  ${(item.price).toFixed(2)}
+                  {formatPrice(item.price)}
                 </p>
+                <button 
+                  onClick={() => handleRemoveItem(item._id)}
+                  className="text-sm text-red-500 hover:text-red-700"
+                >
+                  Remove
+                </button>
               </div>
             </div>
           ))}
@@ -226,18 +245,18 @@ const Checkoutpage = () => {
         <div className="space-y-3 border-t border-gray-200 pt-4">
           <div className="flex justify-between items-center">
             <span className="text-gray-600">Subtotal</span>
-            <span className="font-medium">${subtotal.toFixed(2)}</span>
+            <span className="font-medium">{formatPrice(subtotal)}</span>
           </div>
           <div className="flex justify-between items-center text-green-600">
             <span>Discount (3%)</span>
-            <span>-${discount.toFixed(2)}</span>
+            <span>-{formatPrice(discount)}</span>
           </div>
         </div>
 
         {/* Total */}
         <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-200">
           <span className="font-medium text-lg">Total</span>
-          <span className="font-bold text-lg">${total.toFixed(2)}</span>
+          <span className="font-bold text-lg">{formatPrice(total)}</span>
         </div>
       </div>
     );
