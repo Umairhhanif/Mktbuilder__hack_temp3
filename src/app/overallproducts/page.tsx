@@ -1,12 +1,24 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiFilter, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import ProductList from '../components/productlist';
 import Link from 'next/link';
+import { useSearch } from '../context/SearchContext';
+import { useSearchParams } from 'next/navigation';
 import SHOES from '../shoes/page';
 
 const Page = () => {
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
+  const { setSearchQuery } = useSearch();
+  const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    // Get search query from URL and update context
+    const searchQuery = searchParams.get('search');
+    if (searchQuery) {
+      setSearchQuery(searchQuery);
+    }
+  }, [searchParams, setSearchQuery]);
 
   return (
     <div className="grid grid-cols-12 px-4 md:px-10 py-20 relative">

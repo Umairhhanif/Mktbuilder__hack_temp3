@@ -4,14 +4,86 @@ import Link from 'next/link';
 import { CiSearch } from 'react-icons/ci';
 import { FaRegHeart, FaBars } from 'react-icons/fa';
 import { BsBag } from 'react-icons/bs';
-import { useState } from 'react';
+import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
+import { useSearch } from '../context/SearchContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { urlFor } from '@/sanity/lib/image';
+import { client } from '@/sanity/lib/client';
+import { productSuggestions } from '@/sanity/lib/queries';
+import { useRouter } from 'next/navigation';
+import { useDebounce } from 'use-debounce';
+
+interface ProductSuggestion {
+  _id: string;
+  productName: string;
+  category: string;
+  price: number;
+  slug: string;
+  imageUrl: string;
+}
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { cartCount, showCartPopup, lastAddedItem, setShowCartPopup } = useCart();
+  const { searchQuery, setSearchQuery, handleSearch } = useSearch();
+  const [suggestions, setSuggestions] = useState<ProductSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const [debouncedSearch] = useDebounce(searchQuery, 300);
+
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (debouncedSearch.trim().length > 0) {
+        try {
+          const results = await client.fetch<ProductSuggestion[]>(
+            productSuggestions,
+            { searchTerm: debouncedSearch.toLowerCase() }
+          );
+          setSuggestions(results);
+          setShowSuggestions(true);
+        } catch (error) {
+          console.error('Error fetching suggestions:', error);
+          setSuggestions([]);
+        }
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    };
+
+    fetchSuggestions();
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node) &&
+        !searchInputRef.current?.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSuggestionClick = (slug: string) => {
+    router.push(`/product/${slug}`);
+    setShowSuggestions(false);
+    setSearchQuery('');
+  };
 
   return (
     <div className="relative">
@@ -85,14 +157,62 @@ const Navbar = () => {
 
           {/* Search and Icons */}
           <div className="flex flex-col sm:flex-row items-center mt-4 space-x-4 ml-4">
-            <div className="flex items-center bg-slate-100 rounded-full px-2 py-1 w-full md:w-64">
-              <CiSearch className="text-black text-lg" />
+            <div className="relative flex items-center bg-slate-100 rounded-full px-2 py-1 w-full md:w-64 group hover:bg-slate-200 transition-colors duration-300">
+              <button 
+                onClick={() => {
+                  handleSearch();
+                  setShowSuggestions(false);
+                }}
+                className="hover:scale-110 transition-transform duration-300"
+              >
+                <CiSearch className="text-black text-lg" />
+              </button>
               <input
+                ref={searchInputRef}
                 type="text"
-                placeholder="Search"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={handleKeyPress}
+                onFocus={() => searchQuery.trim() && setShowSuggestions(true)}
                 className="bg-transparent outline-none text-sm sm:text-base pl-2 py-1 w-full"
                 aria-label="Search input"
               />
+              
+              {/* Search Suggestions */}
+              <AnimatePresence>
+                {showSuggestions && suggestions.length > 0 && (
+                  <motion.div
+                    ref={suggestionsRef}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg overflow-hidden z-50"
+                  >
+                    {suggestions.map((suggestion) => (
+                      <div
+                        key={suggestion._id}
+                        className="flex items-center p-3 hover:bg-gray-50 cursor-pointer transition-colors duration-200"
+                        onClick={() => handleSuggestionClick(suggestion.slug)}
+                      >
+                        <div className="w-12 h-12 relative flex-shrink-0">
+                          <Image
+                            src={suggestion.imageUrl}
+                            alt={suggestion.productName}
+                            fill
+                            className="object-cover rounded"
+                          />
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm font-medium text-gray-900">{suggestion.productName}</p>
+                          <p className="text-sm text-gray-500">{suggestion.category}</p>
+                          <p className="text-sm font-medium text-gray-900">${suggestion.price}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             <div className="flex space-x-4 mt-2 sm:space-x-2">

@@ -1,0 +1,116 @@
+@keyframes float {
+  from {
+    transform: translateX(-100px);
+  }
+  to {
+    transform: translateX(calc(100vw + 100px));
+  }
+}
+
+@keyframes fly {
+  0% {
+    transform: translate(-100px, 0) scale(0.3);
+  }
+  50% {
+    transform: translate(calc(50vw - 50px), -100px) scale(0.3);
+  }
+  100% {
+    transform: translate(calc(100vw + 100px), 0) scale(0.3);
+  }
+}
+
+@keyframes wingFlap {
+  0%, 100% {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+  50% {
+    clip-path: polygon(0 30%, 100% 0, 100% 100%, 0 70%);
+  }
+}
+
+.cloud {
+  position: absolute;
+  width: 100px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  animation: float 15s infinite linear;
+}
+
+.cloud::before,
+.cloud::after {
+  content: '';
+  position: absolute;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+}
+
+.cloud::before {
+  width: 50px;
+  height: 50px;
+  top: -20px;
+  left: 15px;
+}
+
+.cloud::after {
+  width: 70px;
+  height: 70px;
+  top: -30px;
+  left: 45px;
+}
+
+.cloud1 {
+  top: 20%;
+  left: -100px;
+  transform: scale(1.5);
+  animation-duration: 35s;
+}
+
+.cloud2 {
+  top: 40%;
+  left: -100px;
+  transform: scale(1);
+  animation-duration: 45s;
+  animation-delay: -10s;
+}
+
+.cloud3 {
+  top: 60%;
+  left: -100px;
+  transform: scale(0.8);
+  animation-duration: 40s;
+  animation-delay: -5s;
+}
+
+.bird {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  background: #000;
+  clip-path: polygon(0 0, 50% 0, 100% 50%, 50% 100%, 0 100%, 40% 50%);
+  animation: fly 20s infinite cubic-bezier(0.4, 0, 0.2, 1), wingFlap 0.8s infinite ease-in-out;
+}
+
+.bird1 {
+  top: 15%;
+  animation-duration: 25s, 0.8s;
+  animation-delay: 0s, 0s;
+}
+
+.bird2 {
+  top: 25%;
+  animation-duration: 30s, 0.9s;
+  animation-delay: -5s, -0.1s;
+}
+
+.bird3 {
+  top: 35%;
+  animation-duration: 28s, 0.7s;
+  animation-delay: -10s, -0.2s;
+}
+
+.bird4 {
+  top: 20%;
+  animation-duration: 32s, 0.85s;
+  animation-delay: -15s, -0.3s;
+}

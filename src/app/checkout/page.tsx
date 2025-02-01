@@ -20,7 +20,7 @@ const countries = [
   "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia",
   "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati",
   "Korea, North", "Korea, South", "Kosovo", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia",
-  "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta"
+  "Libya", "Liechtenstein", "Lithuania", "Luxembourg","Pakistan", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta"
 ];
 
 const Checkoutpage = () => {
