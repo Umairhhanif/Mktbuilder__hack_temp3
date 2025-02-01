@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { FiFilter, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import ProductList from '../components/productlist';
 import Link from 'next/link';
@@ -7,7 +7,7 @@ import { useSearch } from '../context/SearchContext';
 import { useSearchParams } from 'next/navigation';
 import SHOES from '../shoes/page';
 
-const Page = () => {
+const OverallProductsContent = () => {
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const { setSearchQuery } = useSearch();
   const searchParams = useSearchParams();
@@ -99,84 +99,32 @@ const Page = () => {
         <div className="my-10 border-t-2 pt-4">
           <div className="flex justify-between pb-4">
             <p>Shop By Price</p>
-            <FiChevronUp />
-          </div>
-          <div>
-            <input type="checkbox" id="under-2500" />
-            <label className="pl-2 cursor-pointer" htmlFor="under-2500">
-              Under ₹ 2,500.00
-            </label>
-          </div>
-          <div>
-            <input type="checkbox" id="2500-7500" />
-            <label className="pl-2 cursor-pointer" htmlFor="2500-7500">
-              ₹ 2,501.00 - ₹ 7,500.00
-            </label>
+            <FiChevronDown />
           </div>
         </div>
       </div>
-
-      {isSidebarVisible && (
-        <div
-          className="fixed inset-0 bg-black opacity-50 lg:hidden"
-          onClick={() => setIsSidebarVisible(false)}
-        ></div>
-      )}
-
       <div className="col-span-12 lg:col-span-9">
-        <div className="flex justify-between lg:justify-end gap-10 mb-8">
+        <div className="lg:hidden mb-4">
           <button
-            className="flex items-center lg:hidden"
+            className="flex items-center space-x-2 text-lg"
             onClick={() => setIsSidebarVisible(true)}
           >
-            Show Filters <FiFilter className="ml-2" />
+            <FiFilter />
+            <span>Show Filters</span>
           </button>
-          <button className="hidden lg:flex">
-            Hide Filters <FiFilter className="ml-2" />
-          </button>
-          <div className="flex items-center">
-            Sort By <FiChevronDown className="ml-2" />
-          </div>
         </div>
         <SHOES/>
         <ProductList />
-        <div>
-          <h3 className="mt-12 font-bold">Related Categories</h3>
-          <ul className="flex gap-x-4 gap-y-2 flex-wrap mt-4">
-            <li className="border-[1px] rounded-full px-6 py-[0.5px]">
-              <Link href="#">Best Selling Products</Link>
-            </li>
-            <li className="border-[1px] rounded-full px-6 py-[0.5px]">
-              <Link href="#">Best Shoes</Link>
-            </li>
-            <li className="border-[1px] rounded-full px-6 py-[0.5px]">
-              <Link href="#">New Basketball Shoes</Link>
-            </li>
-            <li className="border-[1px] rounded-full px-6 py-[0.5px]">
-              <Link href="#">New Football Shoes</Link>
-            </li>
-            <li className="border-[1px] rounded-full px-6 py-[0.5px]">
-              <Link href="#">New Men's Shoes</Link>
-            </li>
-            <li className="border-[1px] rounded-full px-6 py-[0.5px]">
-              <Link href="#">New Running Shoes</Link>
-            </li>
-            <li className="border-[1px] rounded-full px-6 py-[0.5px]">
-              <Link href="#">Best Men's Shoes</Link>
-            </li>
-            <li className="border-[1px] rounded-full px-6 py-[0.5px]">
-              <Link href="#">New Jordan Shoes</Link>
-            </li>
-            <li className="border-[1px] rounded-full px-6 py-[0.5px]">
-              <Link href="#">Best Women's Shoes</Link>
-            </li>
-            <li className="border-[1px] rounded-full px-6 py-[0.5px]">
-              <Link href="#">Best Training & Gym</Link>
-            </li>
-          </ul>
-        </div>
       </div>
     </div>
+  );
+};
+
+const Page = () => {
+  return (
+    <Suspense fallback={<div className="p-4">Loading...</div>}>
+      <OverallProductsContent />
+    </Suspense>
   );
 };
 

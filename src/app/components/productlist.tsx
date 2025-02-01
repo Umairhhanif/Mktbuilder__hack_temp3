@@ -15,8 +15,7 @@ const ProductList = () => {
       product.title.toLowerCase().includes(searchLower) ||
       product.description.toLowerCase().includes(searchLower) ||
       product.color.toLowerCase().includes(searchLower) ||
-      (product.tags && Array.isArray(product.tags) && 
-        product.tags.some(tag => tag?.toLowerCase().includes(searchLower)))
+      (product.tags && product.tags.toLowerCase().includes(searchLower))
     );
   });
 
@@ -36,7 +35,7 @@ const ProductList = () => {
             title={product.title}
             description={product.description}
             color={product.color}
-            price={Number(product.price)}
+            price={product.price}
             imagesUrls={product.imagesUrls}
           />
         ))
